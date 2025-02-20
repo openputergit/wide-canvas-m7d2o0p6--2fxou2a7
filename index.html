@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Betting Game</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 font-[Poppins]">
+    <div id="app" class="max-w-4xl mx-auto p-4">
+        <!-- Game Section -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold">Color Betting Game</h2>
+                <div>
+                    <span class="font-semibold">Game ID: </span>
+                    <span id="gameId" class="text-blue-600"></span>
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center mb-6">
+                <div class="text-center">
+                    <span class="block font-semibold">Time Remaining</span>
+                    <span id="timer" class="text-xl text-red-600">03:00</span>
+                </div>
+                <div class="text-center">
+                    <span class="block font-semibold">Balance</span>
+                    <span id="balance" class="text-xl">$1000</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <button onclick="placeBet('red')" class="p-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition">
+                    Red
+                </button>
+                <button onclick="placeBet('green')" class="p-4 bg-green-500 text-white rounded-lg hover:bg-green-600 transition">
+                    Green
+                </button>
+                <button onclick="placeBet('violet')" class="p-4 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition">
+                    Violet
+                </button>
+            </div>
+
+            <div class="mb-4">
+                <label class="block mb-2">Bet Amount:</label>
+                <input type="number" id="betAmount" class="w-full p-2 border rounded" min="1" value="10">
+            </div>
+        </div>
+
+        <!-- Previous Results -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h3 class="text-xl font-bold mb-4">Previous Results</h3>
+            <div id="previousResults" class="grid grid-cols-4 gap-2">
+                <!-- Results will be populated here -->
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="bg-white rounded-lg shadow">
+            <div class="border-b">
+                <div class="flex">
+                    <button onclick="switchTab('orders')" class="px-4 py-2 font-semibold border-b-2 border-blue-500">My Orders</button>
+                    <button onclick="switchTab('refer')" class="px-4 py-2 font-semibold">Refer & Earn</button>
+                </div>
+            </div>
+            
+            <div id="ordersTab" class="p-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b">
+                                <th class="text-left p-2">Game ID</th>
+                                <th class="text-left p-2">Color</th>
+                                <th class="text-left p-2">Amount</th>
+                                <th class="text-left p-2">Result</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderHistory">
+                            <!-- Order history will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="referTab" class="p-6 hidden">
+                <div class="text-center">
+                    <h3 class="text-xl font-bold mb-4">Your Referral Link</h3>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="referralLink" readonly value="https://game.com/refer/USER123" class="flex-1 p-2 border rounded">
+                        <button onclick="copyReferralLink()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+                            Copy
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-600">Earn 10% commission on every bet placed by your referrals!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-50 hidden">
+        <div class="bg-white max-w-lg mx-auto mt-20 rounded-lg">
+            <div class="p-6">
+                <h2 class="text-2xl font-bold mb-4">Admin Panel</h2>
+                <div class="mb-4">
+                    <label class="block mb-2">Game ID:</label>
+                    <input type="text" id="adminGameId" class="w-full p-2 border rounded" readonly>
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-2">Set Result:</label>
+                    <select id="adminResult" class="w-full p-2 border rounded">
+                        <option value="red">Red</option>
+                        <option value="green">Green</option>
+                        <option value="violet">Violet</option>
+                    </select>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button onclick="closeAdminPanel()" class="px-4 py-2 border rounded">Close</button>
+                    <button onclick="declareResult()" class="px-4 py-2 bg-blue-500 text-white rounded">Declare Result</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let currentGameId = 1000;
+        let timeRemaining = 180; // 3 minutes in seconds
+        let gameHistory = [];
+        let userBets = [];
+        let userBalance = 1000;
+
+        // Initialize Game
+        function initGame() {
+            updateTimer();
+            startGameTimer();
+            updateGameId();
+        }
+
+        // Timer Functions
+        function startGameTimer() {
+            setInterval(() => {
+                timeRemaining--;
+                if (timeRemaining <= 0) {
+                    endGame();
+                    timeRemaining = 180;
+                    currentGameId++;
+                    updateGameId();
+                }
+                updateTimer();
+            }, 1000);
+        }
+
+        function updateTimer() {
+            const minutes = Math.floor(timeRemaining / 60);
+            const seconds = timeRemaining % 60;
+            document.getElementById('timer').textContent = 
+                `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+        }
+
+        function updateGameId() {
+            document.getElementById('gameId').textContent = currentGameId;
+            document.getElementById('adminGameId').value = currentGameId;
+        }
+
+        // Betting Functions
+        function placeBet(color) {
+            const amount = parseInt(document.getElementById('betAmount').value);
+            if (amount > userBalance) {
+                alert('Insufficient balance!');
+                return;
+            }
+            
+            userBalance -= amount;
+            document.getElementById('balance').textContent = `$${userBalance}`;
+            
+            userBets.push({
+                gameId: currentGameId,
+                color: color,
+                amount: amount,
+                result: 'Pending'
+            });
+            
+            updateOrderHistory();
+        }
+
+        function endGame() {
+            // Simulate random result (in real implementation, this would come from server)
+            const colors = ['red', 'green', 'violet'];
+            const result = colors[Math.floor(Math.random() * colors.length)];
+            
+            gameHistory.unshift({
+                gameId: currentGameId,
+                result: result
+            });
+            
+            // Update bets results
+            userBets.forEach(bet => {
+                if (bet.gameId === currentGameId) {
+                    bet.result = bet.color === result ? 'Won' : 'Lost';
+                    if (bet.result === 'Won') {
+                        userBalance += bet.amount * 2;
+                        document.getElementById('balance').textContent = `$${userBalance}`;
+                    }
+                }
+            });
+            
+            updatePreviousResults();
+            updateOrderHistory();
+        }
+
+        // UI Updates
+        function updatePreviousResults() {
+            const container = document.getElementById('previousResults');
+            container.innerHTML = gameHistory.slice(0, 8).map(game => `
+                <div class="p-2 text-center rounded ${game.result === 'red' ? 'bg-red-500' : 
+                    game.result === 'green' ? 'bg-green-500' : 'bg-violet-500'} text-white">
+                    ${game.gameId}
+                </div>
+            `).join('');
+        }
+
+        function updateOrderHistory() {
+            const container = document.getElementById('orderHistory');
+            container.innerHTML = userBets.map(bet => `
+                <tr class="border-b">
+                    <td class="p-2">${bet.gameId}</td>
+                    <td class="p-2">${bet.color}</td>
+                    <td class="p-2">$${bet.amount}</td>
+                    <td class="p-2">
+                        <span class="px-2 py-1 rounded ${
+                            bet.result === 'Won' ? 'bg-green-100 text-green-800' :
+                            bet.result === 'Lost' ? 'bg-red-100 text-red-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }">
+                            ${bet.result}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Tab Functions
+        function switchTab(tab) {
+            document.getElementById('ordersTab').classList.toggle('hidden', tab !== 'orders');
+            document.getElementById('referTab').classList.toggle('hidden', tab !== 'refer');
+        }
+
+        // Referral Functions
+        function copyReferralLink() {
+            const link = document.getElementById('referralLink');
+            link.select();
+            document.execCommand('copy');
+            alert('Referral link copied!');
+        }
+
+        // Admin Functions
+        function showAdminPanel() {
+            document.getElementById('adminModal').classList.remove('hidden');
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminModal').classList.add('hidden');
+        }
+
+        function declareResult() {
+            const result = document.getElementById('adminResult').value;
+            gameHistory.unshift({
+                gameId: currentGameId,
+                result: result
+            });
+            updatePreviousResults();
+            closeAdminPanel();
+        }
+
+        // Initialize game on load
+        initGame();
+
+        // Add keyboard shortcut for admin panel (Ctrl + Shift + A)
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+                showAdminPanel();
+            }
+        });
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
